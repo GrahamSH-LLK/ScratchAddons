@@ -1,0 +1,7 @@
+.preview .download-button {
+  background-color: #eeaa09;
+}
+
+.preview .download-button::before {
+  background-image: url('https://scratch.mit.edu/svgs/extensions/download-white.svg');
+}

@@ -1,0 +1,17 @@
+{
+  "name": "Download button on project pages",
+  "description": "Adds a download button to a project's public page. Saves having to open the project in the editor.",
+  "userscripts": [
+    {
+      "url": "userscript.js",
+      "matches": ["https://scratch.mit.edu/projects/*"]
+    }
+  ],
+  "userstyles": [
+    {
+      "url": "userstyle.css",
+      "matches": ["https://scratch.mit.edu/projects/*"]
+    }
+  ],
+  "tags": ["editor"]
+}
