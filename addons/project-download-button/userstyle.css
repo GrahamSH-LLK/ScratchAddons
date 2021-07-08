@@ -3,5 +3,5 @@
 }
 
 .preview .download-button::before {
-  background-image: url('https://scratch.mit.edu/svgs/extensions/download-white.svg');
+  background-image: url("https://scratch.mit.edu/svgs/extensions/download-white.svg");
 }
