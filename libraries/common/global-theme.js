@@ -1,4 +1,5 @@
 export default function () {
+  const themeStylePath = chrome.runtime.getURL("/webpages/dist/colors-light.css");
   const prerelease = chrome.runtime.getManifest().version_name.includes("-prerelease");
   if (prerelease) {
     const blue = getComputedStyle(document.documentElement).getPropertyValue("--blue");
@@ -8,15 +9,14 @@ export default function () {
   }
   const lightThemeLink = document.createElement("link");
   lightThemeLink.setAttribute("rel", "stylesheet");
-  lightThemeLink.setAttribute("href", chrome.runtime.getURL("/webpages/dist/colors-light.css"));
+  lightThemeLink.setAttribute("href", themeStylePath);
   lightThemeLink.setAttribute("data-below-vue-components", "");
-  lightThemeLink.media = "not all";
-  document.head.appendChild(lightThemeLink);
+
   return new Promise((resolve) => {
     chrome.storage.sync.get(["globalTheme"], ({ globalTheme = false }) => {
       // true = light, false = dark
-      if (globalTheme === true) {
-        lightThemeLink.removeAttribute("media");
+      if (globalTheme === true && document.head.lastElementChild.href !== themeStylePath) {
+        document.head.appendChild(lightThemeLink);
       }
       let theme = globalTheme;
       resolve({
@@ -25,9 +25,9 @@ export default function () {
           if (mode === theme) return;
           chrome.storage.sync.set({ globalTheme: mode }, () => {
             if (mode === true) {
-              lightThemeLink.removeAttribute("media");
+              document.head.appendChild(lightThemeLink);
             } else {
-              lightThemeLink.media = "not all";
+              document.head.lastElementChild.remove();
             }
           });
           theme = mode;
