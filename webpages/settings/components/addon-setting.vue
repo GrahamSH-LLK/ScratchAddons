@@ -426,9 +426,7 @@ const settingsName = (addon) => {
       return `<img class="inline-icon" src="../../images/icons/${icon.split("@")[1]}" draggable="false"/>`;
     }
     if (icon[0] === "#") {
-      return `<img class="inline-icon" src="../../addons/${addon._addonId}/${
-        icon.split("#")[1]
-      }" draggable="false"/>`;
+      return `<img class="inline-icon" src="../../addons/${addon._addonId}/${icon.split("#")[1]}" draggable="false"/>`;
     }
   });
 };

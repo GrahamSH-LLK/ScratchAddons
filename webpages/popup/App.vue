@@ -153,8 +153,7 @@ onMounted(() => {
 
         popups.value.push(manifest.popup);
         popups.value = popups.value.sort(
-          ({ _addonId: addonIdB }, { _addonId: addonIdA }) =>
-            TAB_ORDER.indexOf(addonIdB) - TAB_ORDER.indexOf(addonIdA)
+          ({ _addonId: addonIdB }, { _addonId: addonIdA }) => TAB_ORDER.indexOf(addonIdB) - TAB_ORDER.indexOf(addonIdA)
         );
       } else {
         let removeIndex = popupsWithIframes.value.findIndex((popup) => popup._addonId === addonId);
