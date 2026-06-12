@@ -247,15 +247,15 @@ import downloadBlob from "../../libraries/common/cs/download-blob.js";
 import getDirection from "../public/rtl-list.js";
 import Fuse from "../../libraries/thirdparty/cs/fuse.esm.min.js";
 import tags from "./data/tags.js";
-import addonGroupsData from "./data/addon-groups.js";
-import categories from "./data/categories.js";
 import exampleManifest from "./data/example-manifest.js";
 import fuseOptions from "./data/fuse-options.js";
 import globalTheme from "../../libraries/common/global-theme.js";
 import { deserializeSettings, serializeSettings } from "./settings-utils.js";
 import { isFirefox } from "../../libraries/common/cs/detect-browser.js";
 import bus from "./lib/eventbus";
-import { computed, onMounted, reactive, ref, watch } from "vue";
+import { storeToRefs } from "pinia";
+import { computed, onMounted, ref, watch } from "vue";
+import { useSettingsStore } from "./stores/settings.js";
 
 import AddonBody from "./components/addon-body.vue";
 import AddonGroupHeader from "./components/addon-group-header.vue";
@@ -284,40 +284,14 @@ if (isFirefox()) {
     browserLevelPermissions.push("clipboardWrite");
   }
 }
-const grantedOptionalPermissions = ref([]);
-const updateGrantedPermissions = () =>
-  chrome.permissions.getAll(({ permissions }) => {
-    grantedOptionalPermissions.value = permissions.filter((p) => browserLevelPermissions.includes(p));
-  });
-updateGrantedPermissions();
-chrome.permissions.onAdded?.addListener(updateGrantedPermissions);
-chrome.permissions.onRemoved?.addListener(updateGrantedPermissions);
 
-const smallMode = ref(false);
-const devMode = ref(false);
-const theme = ref(initialTheme);
-const forceEnglishSetting = ref(null);
-const forceEnglishSettingInitial = ref(null);
-const relatedAddonsOpen = ref(false);
-const relatedToAddonName = ref(null);
-const relatedAddons = reactive([]);
-const relatedAddonsHistory = reactive([]);
-const categoryOpen = ref(true);
-const loaded = ref(false);
-const manifests = ref([]);
-const manifestsById = reactive({});
-const selectedCategory = ref("all");
-const previousCategory = ref("all");
-const searchInput = ref("");
-const searchInputReal = ref("");
-const addonSettings = ref({});
-const addonToEnable = ref(null);
-const showPopupModal = ref(false);
-const addonGroups = reactive(addonGroupsData.filter((g) => (isIframe ? g.iframeShow : g.fullscreenShow)));
-const searchMsg = msg("search");
-const addonListObjs = ref([]);
-const sidebarUrls = reactive(
-  (() => {
+const settingsStore = useSettingsStore();
+settingsStore.initialize({
+  browserLevelPermissions,
+  initialTheme,
+  isIframe,
+  searchMsg: msg("search"),
+  sidebarUrls: (() => {
     const uiLanguage = chrome.i18n.getUILanguage();
     const localeSlash = uiLanguage.startsWith("en") ? "" : `${uiLanguage.split("-")[0]}/`;
     const version = chrome.runtime.getManifest().version;
@@ -328,8 +302,45 @@ const sidebarUrls = reactive(
       feedback: `https://scratchaddons.com/${localeSlash}feedback/?ext_version=${versionName}&${utm}`,
       changelog: `https://scratchaddons.com/${localeSlash}changelog?${utm}`,
     };
-  })()
-);
+  })(),
+});
+
+const {
+  addonListObjs,
+  addonSettings,
+  addonToEnable,
+  categoryOpen,
+  devMode,
+  forceEnglishSetting,
+  forceEnglishSettingInitial,
+  grantedOptionalPermissions,
+  loaded,
+  manifests,
+  previousCategory,
+  relatedAddonsOpen,
+  relatedToAddonName,
+  searchInput,
+  searchInputReal,
+  selectedCategory,
+  showPopupModal,
+  smallMode,
+  theme,
+} = storeToRefs(settingsStore);
+const addonGroups = settingsStore.addonGroups;
+const categories = settingsStore.categories;
+const relatedAddons = settingsStore.relatedAddons;
+const relatedAddonsHistory = settingsStore.relatedAddonsHistory;
+const sidebarUrls = settingsStore.sidebarUrls;
+const manifestsById = settingsStore.manifestsById;
+const searchMsg = settingsStore.searchMsg;
+
+const updateGrantedPermissions = () =>
+  chrome.permissions.getAll(({ permissions }) => {
+    grantedOptionalPermissions.value = permissions.filter((p) => browserLevelPermissions.includes(p));
+  });
+updateGrantedPermissions();
+chrome.permissions.onAdded?.addListener(updateGrantedPermissions);
+chrome.permissions.onRemoved?.addListener(updateGrantedPermissions);
 
 const themePath = computed(() => (theme.value ? "../../images/icons/moon.svg" : "../../images/icons/theme.svg"));
 const addonList = computed(() => {
@@ -583,7 +594,7 @@ onMounted(() => {
 
   const exampleAddonListItem = {
     // Need to specify all used properties for reactivity!
-    group: addonGroupsData[0],
+    group: addonGroups[0],
     manifest: JSON.parse(JSON.stringify(exampleManifest)),
     matchesSearch: true,
     matchesCategory: true,
