@@ -202,7 +202,7 @@
             <button
               class="large-button"
               id="applyLanguageSettingsButton"
-              v-show="forceEnglishSetting !== null && forceEnglishSetting !== this.forceEnglishSettingInitial"
+              v-show="forceEnglishSetting !== null && forceEnglishSetting !== forceEnglishSettingInitial"
               @click="applyLanguageSettings()"
               style="margin-inline-start: 16px"
             >
