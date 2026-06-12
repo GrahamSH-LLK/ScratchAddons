@@ -1343,7 +1343,83 @@
 }
 </style>
 
-<script>
-import EditorDarkMode from "./editor-dark-mode.js";
-export default EditorDarkMode;
+<script setup>
+import cssVariables from "../../../../libraries/common/vue-css-variables.js";
+import { textColor, multiply, alphaBlend, makeHsv } from "../../../../libraries/common/cs/text-color.esm.js";
+import { computed, ref } from "vue";
+
+const props = defineProps(["settings", "hoveredSettingId"]);
+const emit = defineEmits(["areahover"]);
+
+const tabs = ref([
+  { id: "code", textLength: 4 },
+  { id: "costumes", textLength: 8 },
+  { id: "sounds", textLength: 6 },
+]);
+const selectedTab = ref("code");
+const fullScreenView = ref(false);
+const blockCategories = ref([
+  { primary: "#4c97ff", tertiary: "#3373cc", textLength: [6] },
+  { primary: "#9966ff", tertiary: "#774dcb", textLength: [5] },
+  { primary: "#cf63cf", tertiary: "#bd42bd", textLength: [5] },
+  { primary: "#ffd500", tertiary: "#cc9900", textLength: [6] },
+  { primary: "#ffab19", tertiary: "#cf8b17", textLength: [7] },
+  { primary: "#5cb1d6", tertiary: "#2e8eb8", textLength: [7] },
+  { primary: "#59c059", tertiary: "#389438", textLength: [9] },
+  { primary: "#ff8c1a", tertiary: "#db6e00", textLength: [9] },
+  { primary: "#ff6680", tertiary: "#ff3355", textLength: [2, 6] },
+]);
+const soundEffects = ref([
+  { textLength: [6] },
+  { textLength: [6] },
+  { textLength: [6] },
+  { textLength: [6] },
+  { textLength: [4] },
+  { textLength: [4, 2] },
+  { textLength: [4, 3] },
+  { textLength: [7] },
+  { textLength: [7] },
+]);
+const colors = computed(() => ({
+  primaryText: textColor(props.settings.primary),
+  menuBarText: textColor(props.settings.menuBar),
+  accentText: textColor(props.settings.accent),
+  inputText: textColor(props.settings.input),
+  categoryMenuText: textColor(props.settings.categoryMenu),
+  selectorText: textColor(props.settings.selector),
+  selector2Text: textColor(props.settings.selector2),
+  pageText: textColor(props.settings.page, "rgba(87, 94, 117, 0.75)", "rgba(255, 255, 255, 0.75)"),
+  menuBarBorder: textColor(props.settings.menuBar, "rgba(0, 0, 0, 0.15)", "rgba(255, 255, 255, 0.15)", 60),
+  accentTransparentText: textColor(props.settings.accent, "rgba(87, 94, 117, 0.5)", "rgba(255, 255, 255, 0.3)"),
+  accentArtboard: props.settings.affectPaper ? props.settings.accent : "#ffffff",
+  accentCheckerboard: props.settings.affectPaper
+    ? multiply(
+        textColor(
+          // see addons/editor-dark-mode/paper.js
+          props.settings.accent,
+          alphaBlend(props.settings.accent, multiply(makeHsv(props.settings.page, 1, 0.67), { a: 0.15 })),
+          alphaBlend(props.settings.accent, multiply(makeHsv(props.settings.page, 0.5, 1), { a: 0.15 })),
+          112 // threshold: #707070
+        ),
+        { a: 0.55 }
+      )
+    : "#d9e3f28c",
+  tabText: textColor(props.settings.tab, "rgba(87, 94, 117, 0.75)", "rgba(255, 255, 255, 0.75)"),
+  categoryMenuSelection: textColor(
+    props.settings.categoryMenu,
+    "rgba(87, 124, 155, 0.13)",
+    "rgba(255, 255, 255, 0.05)"
+  ),
+  primaryTransparent15: multiply(props.settings.primary, { a: 0.15 }),
+  primaryTransparent35: multiply(props.settings.primary, { a: 0.35 }),
+  inputTransparent: multiply(props.settings.input, { a: 0.25 }),
+}));
+
+const selectTab = (id) => {
+  selectedTab.value = id;
+  emit("areahover", "activeTab");
+};
+const toggleFullScreenView = () => {
+  fullScreenView.value = !fullScreenView.value;
+};
 </script>

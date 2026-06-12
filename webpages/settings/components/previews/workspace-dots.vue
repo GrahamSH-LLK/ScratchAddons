@@ -41,7 +41,20 @@
 }
 </style>
 
-<script>
-import WorkspaceDots from "./workspace-dots.js";
-export default WorkspaceDots;
+<script setup>
+import { computed } from "vue";
+
+const props = defineProps(["settings", "hoveredSettingId"]);
+
+const spacing = computed(() => 27 / props.settings.spacingDivisor);
+const lineWidth = computed(
+  () =>
+    ({
+      dots: 0.675,
+      crosshairs: spacing.value / 2.5,
+      lines: spacing.value + 1,
+      vertical: spacing.value + 1,
+      horizontal: spacing.value + 1,
+    })[props.settings.theme] || 0
+);
 </script>

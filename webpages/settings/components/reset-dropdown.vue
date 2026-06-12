@@ -30,7 +30,22 @@
   </div>
 </template>
 
-<script>
-import ResetDropdown from "./reset-dropdown.js";
-export default ResetDropdown;
+<script setup>
+import { getCurrentInstance } from "vue";
+import Dropdown from "./dropdown.vue";
+
+const props = defineProps(["disabled", "setting", "presets"]);
+
+const instance = getCurrentInstance();
+const parent = instance.proxy.$parent;
+const root = instance.proxy.$root;
+const resetToDefault = () => {
+  parent.addonSettings[props.setting.id] = props.setting.default;
+  parent.updateSettings(parent.addon, { settingId: props.setting.id });
+};
+const resetToPreset = (preset) => {
+  parent.addonSettings[props.setting.id] = preset.values[props.setting.id];
+  parent.updateSettings(parent.addon, { settingId: props.setting.id });
+};
+const msg = (...params) => root.msg(...params);
 </script>

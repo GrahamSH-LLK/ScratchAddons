@@ -103,7 +103,29 @@ button.category {
 }
 </style>
 
-<script>
-import CategorySelector from "./category-selector.js";
-export default CategorySelector;
+<script setup>
+import { computed, getCurrentInstance, ref } from "vue";
+
+const props = defineProps(["category"]);
+
+const root = getCurrentInstance().proxy.$root;
+const lastClick = ref(0);
+const selectedCategory = computed(() => root.selectedCategory);
+const shouldShow = computed(() => {
+  const categoriesWithParent = root.categories
+    .filter((category) => category.parent === props.category.parent)
+    .map((category) => category.id);
+  return !props.category.parent || [props.category.parent, ...categoriesWithParent].includes(selectedCategory.value);
+});
+const onClick = (event) => {
+  event.stopPropagation();
+  if (selectedCategory.value === props.category.id && !props.category.parent && Date.now() - lastClick.value > 350) {
+    root.selectedCategory = "all";
+  } else {
+    root.selectedCategory = props.category.id;
+  }
+  lastClick.value = Date.now();
+  root.relatedAddonsHistory.length = 0;
+  root.relatedAddonsOpen = false;
+};
 </script>

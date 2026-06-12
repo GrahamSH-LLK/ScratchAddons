@@ -94,7 +94,7 @@
           type="number"
           class="setting-input number"
           v-model="addonSettings[setting.id]"
-          @change="checkValidity() || updateSettings()"
+          @change="checkValidity($event) || updateSettings()"
           :disabled="!addon._enabled"
           min="0"
           number
@@ -105,7 +105,7 @@
           type="number"
           class="setting-input number"
           v-model="addonSettings[setting.id]"
-          @change="checkValidity() || updateSettings()"
+          @change="checkValidity($event) || updateSettings()"
           :disabled="!addon._enabled"
           :min="setting.min"
           :max="setting.max"
@@ -117,7 +117,7 @@
           type="text"
           class="setting-input string"
           v-model="addonSettings[setting.id]"
-          @change="checkValidity() || updateSettings()"
+          @change="checkValidity($event) || updateSettings()"
           :disabled="!addon._enabled"
           :placeholder="setting.default"
           :maxlength="setting.max || 100"
@@ -332,7 +332,139 @@
 }
 </style>
 
-<script>
-import AddonSetting from "./addon-setting.js";
-export default AddonSetting;
+<script setup>
+import Sortable from "sortablejs";
+import bus from "../lib/eventbus";
+import { computed, getCurrentInstance } from "vue";
+
+import AddonTag from "./addon-tag.vue";
+import Dropdown from "./dropdown.vue";
+import Picker from "./picker-component.vue";
+import ResetDropdown from "./reset-dropdown.vue";
+
+const props = defineProps(["addon", "groupId", "setting", "settingPath", "addon-settings"]);
+
+const instance = getCurrentInstance();
+const root = instance.proxy.$root;
+const parent = instance.proxy.$parent;
+
+const noResetDropdown = computed(() => ["table", "boolean", "select"].includes(props.setting.type));
+const tableChild = computed(() => props.settingPath.length > 1);
+const selectName = computed(() => `${props.groupId}-${props.addon._addonId}-${props.settingPath.join("-")}`);
+const show = computed(() => {
+  if (!props.setting.if) return true;
+
+  if (props.setting.if.addonEnabled) {
+    const arr = Array.isArray(props.setting.if.addonEnabled)
+      ? props.setting.if.addonEnabled
+      : [props.setting.if.addonEnabled];
+    if (arr.some((addon) => root.manifestsById[addon]._enabled === true)) return true;
+  }
+
+  if (props.setting.if.settings) {
+    const anyMatches = Object.keys(props.setting.if.settings).some((settingName) => {
+      const arr = Array.isArray(props.setting.if.settings[settingName])
+        ? props.setting.if.settings[settingName]
+        : [props.setting.if.settings[settingName]];
+      return arr.some(
+        (possibleValue) =>
+          props.addonSettings[settingName] === possibleValue || parent?.addonSettings?.[settingName] === possibleValue
+      );
+    });
+    if (anyMatches === true) return true;
+  }
+
+  return false;
+});
+const showResetDropdown = computed(
+  () =>
+    !tableChild.value &&
+    props.addon.presets &&
+    props.addon.presets.some(
+      (preset) =>
+        Object.prototype.hasOwnProperty.call(preset.values, props.setting.id) &&
+        (props.setting.type === "color"
+          ? preset.values[props.setting.id].toLowerCase() !== props.setting.default.toLowerCase()
+          : preset.values[props.setting.id] !== props.setting.default)
+    )
+);
+const isNewOption = computed(() => {
+  if (!props.addon.latestUpdate) return false;
+
+  const [extMajor, extMinor, _] = root.version.split(".");
+  const [addonMajor, addonMinor, __] = props.addon.latestUpdate.version.split(".");
+  if (!(extMajor === addonMajor && extMinor === addonMinor)) return false;
+
+  if (props.addon.latestUpdate.newSettings && props.addon.latestUpdate.newSettings.includes(props.setting.id))
+    return true;
+  else return false;
+});
+const updateSettings = (...params) => {
+  if (!params[0]) params[0] = props.addon;
+  root.updateSettings(...params);
+};
+const updateTable = (event) => {
+  let list = props.addonSettings[props.setting.id];
+  list.splice(event.newIndex, 0, list.splice(event.oldIndex, 1)[0]);
+  updateSettings();
+};
+const settingsName = (addon) => {
+  const name = props.setting.name;
+  const regex = /([\\]*)(@|#)([a-zA-Z0-9.\-\/_]*)/g;
+  return name.replace(regex, (icon) => {
+    if (icon[0] === "\\") {
+      return icon.slice(1);
+    }
+    if (icon[0] === "@") {
+      return `<img class="inline-icon" src="../../images/icons/${icon.split("@")[1]}" draggable="false"/>`;
+    }
+    if (icon[0] === "#") {
+      return `<img class="inline-icon" src="../../addons/${addon._addonId}/${
+        icon.split("#")[1]
+      }" draggable="false"/>`;
+    }
+  });
+};
+const selectOptionId = (option) => `${selectName.value}-${option.id}`;
+const checkValidity = (event) => {
+  let input = event.target;
+  if (!input.validity.valid) props.addonSettings[props.setting.id] = props.setting.default;
+};
+const getTableSetting = (id) => props.setting.row.find((setting) => setting.id === id);
+const deleteTableRow = (i) => {
+  props.addonSettings[props.setting.id].splice(i, 1);
+  updateSettings();
+};
+const addTableRow = (items = {}) => {
+  const settings = Object.assign(
+    {},
+    props.setting.row.reduce((acc, cur) => {
+      acc[cur.id] = cur.default;
+      return acc;
+    }, {}),
+    items
+  );
+  props.addonSettings[props.setting.id].push(settings);
+  updateSettings();
+};
+const msg = (...params) => root.msg(...params);
+const updateOption = (newValue) => {
+  props.addonSettings[props.setting.id] = newValue;
+  updateSettings();
+};
+const closePickers = (...params) => root.closePickers(...params);
+
+const vSortable = {
+  mounted: (el, binding) => {
+    const sortable = new Sortable(el, {
+      handle: ".handle",
+      animation: 300,
+      onUpdate: binding.value.update,
+      disabled: !binding.value.enabled,
+    });
+    bus.$on(`toggle-addon-request-${binding.value.id}`, (state) => {
+      sortable.option("disabled", !state);
+    });
+  },
+};
 </script>

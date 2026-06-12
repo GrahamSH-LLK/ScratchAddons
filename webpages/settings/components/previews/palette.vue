@@ -46,7 +46,8 @@
 }
 </style>
 
-<script>
-import Palette from "./palette.js";
-export default Palette;
+<script setup>
+const props = defineProps(["options", "settingData", "settings"]);
+
+const settingName = (id) => props.settingData.find((setting) => setting.id === id).name;
 </script>

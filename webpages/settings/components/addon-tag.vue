@@ -20,7 +20,19 @@
   </div>
 </template>
 
-<script>
-import AddonTag from "./addon-tag.js";
-export default AddonTag;
+<script setup>
+import { computed, getCurrentInstance } from "vue";
+import tags from "../data/tags.js";
+
+const props = defineProps(["tag"]);
+
+const isIframe = window.parent !== window;
+const root = getCurrentInstance().proxy.$root;
+const tagInfo = computed(() => tags.find((tag) => tag.matchName === props.tag));
+const shouldShow = computed(() => {
+  if (isIframe) return tagInfo.value && tagInfo.value.iframeAlwaysShow;
+  return tagInfo.value && (!tagInfo.value.addonTabShow || tagInfo.value.addonTabShow[root.selectedCategory]);
+});
+const tagName = computed(() => chrome.i18n.getMessage(tagInfo.value.name));
+const tagTooltip = computed(() => chrome.i18n.getMessage(tagInfo.value.tooltipText));
 </script>

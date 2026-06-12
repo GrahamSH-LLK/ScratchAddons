@@ -41,7 +41,16 @@
 }
 </style>
 
-<script>
-import AddonGroupHeader from "./addon-group-header.js";
-export default AddonGroupHeader;
+<script setup>
+import { computed, getCurrentInstance } from "vue";
+
+const props = defineProps(["group", "shownCount", "marginAbove"]);
+
+const root = getCurrentInstance().proxy.$root;
+const shouldShow = computed(() => root.searchInput === "" && props.shownCount > 0);
+const manifestsById = computed(() => root.manifestsById);
+const toggle = () => {
+  props.group.expanded = !props.group.expanded;
+};
+const msg = (...params) => root.msg(...params);
 </script>

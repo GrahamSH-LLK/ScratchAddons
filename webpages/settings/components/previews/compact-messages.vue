@@ -146,7 +146,8 @@
 }
 </style>
 
-<script>
-import CompactMessages from "./compact-messages.js";
-export default CompactMessages;
+<script setup>
+import cssVariables from "../../../../libraries/common/vue-css-variables.js";
+
+defineProps(["settings", "hoveredSettingId"]);
 </script>

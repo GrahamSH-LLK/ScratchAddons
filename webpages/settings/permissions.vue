@@ -23,39 +23,31 @@
   </div>
 </template>
 
-<script>
+<script setup>
 import globalTheme from "../../libraries/common/global-theme.js";
+import { onMounted, ref } from "vue";
 
-export default {
-  data() {
-    return {
-      screenshotPath: "../../images/screenshots/permissions-dark.png",
-    };
-  },
-  methods: {
-    msg(message, ...param) {
-      return chrome.i18n.getMessage(message, ...param);
-    },
-  },
-  mounted() {
-    globalTheme().then(({ theme }) => {
-      if (theme) {
-        this.screenshotPath = "../../images/screenshots/permissions-light.png";
-      }
-    });
+const screenshotPath = ref("../../images/screenshots/permissions-dark.png");
+const msg = (message, ...param) => chrome.i18n.getMessage(message, ...param);
 
-    document.title = chrome.i18n.getMessage("permissionsTitle");
+onMounted(() => {
+  globalTheme().then(({ theme }) => {
+    if (theme) {
+      screenshotPath.value = "../../images/screenshots/permissions-light.png";
+    }
+  });
 
-    document.getElementById("permissionsBtn").addEventListener("click", async () => {
-      const manifest = chrome.runtime.getManifest();
-      const origins = manifest.host_permissions.filter((url) => url.startsWith("https://"));
+  document.title = chrome.i18n.getMessage("permissionsTitle");
 
-      const granted = await chrome.permissions.request({ origins });
-      if (granted) {
-        return chrome.runtime.reload();
-      }
-      alert(chrome.i18n.getMessage("permissionsDenied"));
-    });
-  },
-};
+  document.getElementById("permissionsBtn").addEventListener("click", async () => {
+    const manifest = chrome.runtime.getManifest();
+    const origins = manifest.host_permissions.filter((url) => url.startsWith("https://"));
+
+    const granted = await chrome.permissions.request({ origins });
+    if (granted) {
+      return chrome.runtime.reload();
+    }
+    alert(chrome.i18n.getMessage("permissionsDenied"));
+  });
+});
 </script>

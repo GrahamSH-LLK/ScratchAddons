@@ -64,7 +64,16 @@
 }
 </style>
 
-<script>
-import Modal from "./modal.js";
-export default Modal;
+<script setup>
+import { getCurrentInstance } from "vue";
+
+defineProps(["title"]);
+
+const instance = getCurrentInstance();
+const root = instance.proxy.$root;
+const openModal = () => instance.proxy.$el.showModal();
+const closeModal = () => instance.proxy.$el.close();
+const msg = (...params) => root.msg(...params);
+
+defineExpose({ closeModal, openModal });
 </script>

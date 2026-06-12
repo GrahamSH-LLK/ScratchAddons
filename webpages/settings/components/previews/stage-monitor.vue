@@ -159,7 +159,25 @@
 }
 </style>
 
-<script>
-import StageMonitor from "./stage-monitor.js";
-export default StageMonitor;
+<script setup>
+import cssVariables from "../../../../libraries/common/vue-css-variables.js";
+import { textColor } from "../../../../libraries/common/cs/text-color.esm.js";
+import { computed, getCurrentInstance } from "vue";
+
+const props = defineProps(["settings", "hoveredSettingId"]);
+
+const root = getCurrentInstance().proxy.$root;
+const colors = computed(() => {
+  const variableValue = props.settings.customValueColor ? props.settings.monitorValueBg : "#ff8c1a";
+  const listValue = props.settings.customValueColor ? props.settings.monitorValueBg : "#fc662c";
+  return {
+    monitorLabel: textColor(props.settings.monitor),
+    listHeaderText: textColor(props.settings.listHeader),
+    variableValue,
+    variableValueText: textColor(variableValue),
+    listValue,
+    listValueText: textColor(listValue),
+  };
+});
+const msg = (...params) => root.msg(...params);
 </script>

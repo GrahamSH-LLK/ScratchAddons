@@ -42,7 +42,19 @@
 }
 </style>
 
-<script>
-import StageMonitorPreset from "./stage-monitor-preset.js";
-export default StageMonitorPreset;
+<script setup>
+import cssVariables from "../../../../libraries/common/vue-css-variables.js";
+import { textColor } from "../../../../libraries/common/cs/text-color.esm.js";
+import { computed } from "vue";
+
+const props = defineProps(["options", "settingData", "settings"]);
+
+const colors = computed(() => {
+  const valueColor = props.settings.customValueColor ? props.settings.monitorValueBg : "#ff8c1a";
+  return {
+    monitorLabel: textColor(props.settings.monitor),
+    value: valueColor,
+    valueText: textColor(valueColor),
+  };
+});
 </script>

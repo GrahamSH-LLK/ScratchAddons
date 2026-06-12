@@ -13,63 +13,61 @@
   </div>
 </template>
 
-<script>
+<script setup>
 import { Chrome } from "@lk77/vue3-color";
+import { getCurrentInstance, onMounted, ref, watch } from "vue";
 import bus from "../lib/eventbus";
 
-export default {
-  components: { Chrome },
-  props: ["value", "addon", "setting", "no_alpha", "disabled"],
-  data() {
-    return {
-      load: false,
-      isOpen: false,
-      color: this.value,
-    };
-  },
-  mounted() {
-    bus.$on("close-pickers", (except) => {
-      if (this.isOpen && this !== except) {
-        this.close(false);
-      }
+const props = defineProps(["value", "addon", "setting", "no_alpha", "disabled"]);
+
+const instance = getCurrentInstance();
+const root = instance.proxy.$root;
+const parent = instance.proxy.$parent;
+const load = ref(false);
+const isOpen = ref(false);
+const color = ref(props.value);
+
+watch(
+  () => props.value,
+  (newVal) => {
+    color.value = newVal;
+  }
+);
+
+onMounted(() => {
+  bus.$on("close-pickers", (except) => {
+    if (isOpen.value && instance.proxy !== except) {
+      close(false);
+    }
+  });
+});
+
+function open() {
+  if (!load.value) return;
+  isOpen.value = true;
+  root.closePickers({ isTrusted: true }, instance.proxy, {
+    callCloseDropdowns: false,
+  });
+  root.closeDropdowns({ isTrusted: true });
+}
+
+function close(callBus = true) {
+  isOpen.value = false;
+  if (callBus) bus.$emit("close-pickers", instance.proxy);
+}
+
+function onColorChange(newColor) {
+  const hex = props.no_alpha ? newColor.hex : newColor.hex8;
+  color.value = hex;
+
+  if (props.value !== color.value) {
+    parent.addonSettings[props.setting.id] = color.value;
+    parent.updateSettings(props.addon, {
+      wait: 250,
+      settingId: props.setting.id,
     });
-  },
-
-  watch: {
-    value(newVal) {
-      this.color = newVal;
-    },
-  },
-
-  methods: {
-    open() {
-      if (!this.load) return;
-      this.isOpen = true;
-      this.$root.closePickers({ isTrusted: true }, this, {
-        callCloseDropdowns: false,
-      });
-      this.$root.closeDropdowns({ isTrusted: true });
-    },
-
-    close(callBus = true) {
-      this.isOpen = false;
-      if (callBus) bus.$emit("close-pickers", this);
-    },
-
-    onColorChange(newColor) {
-      const hex = this.no_alpha ? newColor.hex : newColor.hex8;
-      this.color = hex;
-
-      if (this.value !== this.color) {
-        this.$parent.addonSettings[this.setting.id] = this.color;
-        this.$parent.updateSettings(this.addon, {
-          wait: 250,
-          settingId: this.setting.id,
-        });
-      }
-    },
-  },
-};
+  }
+}
 </script>
 
 <style>
