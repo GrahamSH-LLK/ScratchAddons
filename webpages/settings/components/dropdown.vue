@@ -70,13 +70,13 @@
 </style>
 
 <script setup>
-import bus from "../lib/eventbus";
-import { computed, getCurrentInstance, onMounted, ref } from "vue";
+import { computed, getCurrentInstance, ref, watch } from "vue";
 import { useSettingsStore } from "../stores/settings.js";
 
 defineProps(["buttonClass", "buttonTitle", "disabled", "alignStart"]);
 
 const instance = getCurrentInstance();
+const dropdownId = instance.uid;
 const settingsStore = useSettingsStore();
 const isOpen = ref(false);
 const shiftAmountsByKey = {
@@ -93,7 +93,7 @@ const toggle = () => {
   settingsStore.closePickers({ isTrusted: true }, null, {
     callCloseDropdowns: false,
   });
-  settingsStore.closeDropdowns({ isTrusted: true }, instance.proxy); // close other dropdowns
+  settingsStore.closeDropdowns({ isTrusted: true }, dropdownId); // close other dropdowns
   if (isOpen.value) {
     instance.proxy.$nextTick(() => {
       instance.proxy.$refs.list.firstElementChild.focus();
@@ -127,11 +127,12 @@ const handleKeys = (e) => {
 };
 const closeDropdowns = (...params) => settingsStore.closeDropdowns(...params);
 
-onMounted(() => {
-  bus.$on("close-dropdowns", (except) => {
-    if (isOpen.value && except !== instance.proxy) {
+watch(
+  () => settingsStore.closeDropdownsSignal,
+  () => {
+    if (isOpen.value && settingsStore.closeDropdownsExceptId !== dropdownId) {
       isOpen.value = false;
     }
-  });
-});
+  }
+);
 </script>

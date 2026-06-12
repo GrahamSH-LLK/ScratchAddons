@@ -17,7 +17,7 @@
     </div>
     <template v-if="noResetDropdown">
       <div v-if="setting.type === 'table'" class="setting-table">
-        <div class="setting-table-list" v-sortable="{ update: updateTable, enabled: addon._enabled, id: addon.id }">
+        <div class="setting-table-list" v-sortable="{ update: updateTable, enabled: addon._enabled }">
           <div class="setting-table-row" v-for="(row, i) of addonSettings[setting.id]">
             <div class="setting-table-options">
               <button
@@ -69,7 +69,7 @@
         v-if="setting.type === 'boolean'"
         type="checkbox"
         class="switch blue"
-        v-model="addonSettings[setting.id]"
+        v-model="settingValue"
         @change="updateSettings()"
         :disabled="!addon._enabled"
       />
@@ -81,7 +81,7 @@
             :id="selectOptionId(option)"
             :value="option.id"
             :disabled="!addon._enabled"
-            v-model="addonSettings[setting.id]"
+            v-model="settingValue"
             @change="updateSettings()"
           />
           <label class="filter-option" :for="selectOptionId(option)">{{ option.name }}</label>
@@ -93,7 +93,7 @@
         <input
           type="number"
           class="setting-input number"
-          v-model="addonSettings[setting.id]"
+          v-model="settingValue"
           @change="checkValidity($event) || updateSettings()"
           :disabled="!addon._enabled"
           min="0"
@@ -104,7 +104,7 @@
         <input
           type="number"
           class="setting-input number"
-          v-model="addonSettings[setting.id]"
+          v-model="settingValue"
           @change="checkValidity($event) || updateSettings()"
           :disabled="!addon._enabled"
           :min="setting.min"
@@ -116,7 +116,7 @@
         ><input
           type="text"
           class="setting-input string"
-          v-model="addonSettings[setting.id]"
+          v-model="settingValue"
           @change="checkValidity($event) || updateSettings()"
           :disabled="!addon._enabled"
           :placeholder="setting.default"
@@ -131,6 +131,7 @@
           :setting="setting"
           :addon="addon"
           :addon-settings="addonSettings"
+          :setting-path="settingPath"
           :no_alpha="!setting.allowTransparency"
           :disabled="!addon._enabled"
           v-click-outside="closePickers"
@@ -140,6 +141,7 @@
         ><reset-dropdown
           :addon="addon"
           :addon-settings="addonSettings"
+          :setting-path="settingPath"
           :setting="setting"
           :disabled="!addon._enabled"
           :presets="addon.presets"
@@ -341,7 +343,6 @@
 
 <script setup>
 import Sortable from "sortablejs";
-import bus from "../lib/eventbus";
 import { computed } from "vue";
 import { useSettingsStore } from "../stores/settings.js";
 
@@ -357,6 +358,10 @@ const settingsStore = useSettingsStore();
 const noResetDropdown = computed(() => ["table", "boolean", "select"].includes(props.setting.type));
 const tableChild = computed(() => props.settingPath.length > 1);
 const selectName = computed(() => `${props.groupId}-${props.addon._addonId}-${props.settingPath.join("-")}`);
+const settingValue = computed({
+  get: () => props.addonSettings[props.setting.id],
+  set: (value) => settingsStore.setAddonSetting(props.addon, props.settingPath, value),
+});
 const show = computed(() => {
   if (!props.setting.if) return true;
 
@@ -411,9 +416,7 @@ const updateSettings = (...params) => {
   settingsStore.updateSettings(...params);
 };
 const updateTable = (event) => {
-  let list = props.addonSettings[props.setting.id];
-  list.splice(event.newIndex, 0, list.splice(event.oldIndex, 1)[0]);
-  updateSettings();
+  settingsStore.moveTableRow(props.addon, props.setting, event.oldIndex, event.newIndex);
 };
 const settingsName = (addon) => {
   const name = props.setting.name;
@@ -433,43 +436,36 @@ const settingsName = (addon) => {
 const selectOptionId = (option) => `${selectName.value}-${option.id}`;
 const checkValidity = (event) => {
   let input = event.target;
-  if (!input.validity.valid) props.addonSettings[props.setting.id] = props.setting.default;
+  if (!input.validity.valid) settingsStore.setAddonSetting(props.addon, props.settingPath, props.setting.default);
 };
 const getTableSetting = (id) => props.setting.row.find((setting) => setting.id === id);
 const deleteTableRow = (i) => {
-  props.addonSettings[props.setting.id].splice(i, 1);
-  updateSettings();
+  settingsStore.deleteTableRow(props.addon, props.setting, i);
 };
 const addTableRow = (items = {}) => {
-  const settings = Object.assign(
-    {},
-    props.setting.row.reduce((acc, cur) => {
-      acc[cur.id] = cur.default;
-      return acc;
-    }, {}),
-    items
-  );
-  props.addonSettings[props.setting.id].push(settings);
-  updateSettings();
+  settingsStore.addTableRow(props.addon, props.setting, items);
 };
 const msg = (...params) => settingsStore.msg(...params);
 const updateOption = (newValue) => {
-  props.addonSettings[props.setting.id] = newValue;
-  updateSettings();
+  settingsStore.setAddonSetting(props.addon, props.settingPath, newValue, { persist: true });
 };
 const closePickers = (...params) => settingsStore.closePickers(...params);
 
 const vSortable = {
   mounted: (el, binding) => {
-    const sortable = new Sortable(el, {
+    el._sortable = new Sortable(el, {
       handle: ".handle",
       animation: 300,
       onUpdate: binding.value.update,
       disabled: !binding.value.enabled,
     });
-    bus.$on(`toggle-addon-request-${binding.value.id}`, (state) => {
-      sortable.option("disabled", !state);
-    });
+  },
+  updated: (el, binding) => {
+    el._sortable?.option("disabled", !binding.value.enabled);
+  },
+  unmounted: (el) => {
+    el._sortable?.destroy();
+    delete el._sortable;
   },
 };
 </script>

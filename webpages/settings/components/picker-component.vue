@@ -15,13 +15,13 @@
 
 <script setup>
 import { Chrome } from "@lk77/vue3-color";
-import { getCurrentInstance, onMounted, ref, watch } from "vue";
-import bus from "../lib/eventbus";
+import { getCurrentInstance, ref, watch } from "vue";
 import { useSettingsStore } from "../stores/settings.js";
 
-const props = defineProps(["value", "addon", "setting", "no_alpha", "disabled", "addon-settings"]);
+const props = defineProps(["value", "addon", "setting", "settingPath", "no_alpha", "disabled", "addon-settings"]);
 
 const instance = getCurrentInstance();
+const pickerId = instance.uid;
 const settingsStore = useSettingsStore();
 const load = ref(false);
 const isOpen = ref(false);
@@ -34,18 +34,19 @@ watch(
   }
 );
 
-onMounted(() => {
-  bus.$on("close-pickers", (except) => {
-    if (isOpen.value && instance.proxy !== except) {
+watch(
+  () => settingsStore.closePickersSignal,
+  () => {
+    if (isOpen.value && settingsStore.closePickersExceptId !== pickerId) {
       close(false);
     }
-  });
-});
+  }
+);
 
 function open() {
   if (!load.value) return;
   isOpen.value = true;
-  settingsStore.closePickers({ isTrusted: true }, instance.proxy, {
+  settingsStore.closePickers({ isTrusted: true }, pickerId, {
     callCloseDropdowns: false,
   });
   settingsStore.closeDropdowns({ isTrusted: true });
@@ -53,7 +54,7 @@ function open() {
 
 function close(callBus = true) {
   isOpen.value = false;
-  if (callBus) bus.$emit("close-pickers", instance.proxy);
+  if (callBus) settingsStore.closePickers(null, pickerId, { callCloseDropdowns: false });
 }
 
 function onColorChange(newColor) {
@@ -61,10 +62,10 @@ function onColorChange(newColor) {
   color.value = hex;
 
   if (props.value !== color.value) {
-    props.addonSettings[props.setting.id] = color.value;
-    settingsStore.updateSettings(props.addon, {
+    settingsStore.setAddonSetting(props.addon, props.settingPath, color.value, {
+      persist: true,
       wait: 250,
-      settingId: props.setting.id,
+      settingId: props.settingPath[0],
     });
   }
 }

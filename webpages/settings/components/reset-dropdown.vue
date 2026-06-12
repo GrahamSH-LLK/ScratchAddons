@@ -34,16 +34,17 @@
 import Dropdown from "./dropdown.vue";
 import { useSettingsStore } from "../stores/settings.js";
 
-const props = defineProps(["addon", "addon-settings", "disabled", "setting", "presets"]);
+const props = defineProps(["addon", "addon-settings", "disabled", "setting", "settingPath", "presets"]);
 
 const settingsStore = useSettingsStore();
 const resetToDefault = () => {
-  props.addonSettings[props.setting.id] = props.setting.default;
-  settingsStore.updateSettings(props.addon, { settingId: props.setting.id });
+  settingsStore.resetAddonSetting(props.addon, props.setting, props.settingPath);
 };
 const resetToPreset = (preset) => {
-  props.addonSettings[props.setting.id] = preset.values[props.setting.id];
-  settingsStore.updateSettings(props.addon, { settingId: props.setting.id });
+  settingsStore.setAddonSetting(props.addon, props.settingPath, preset.values[props.setting.id], {
+    persist: true,
+    settingId: props.settingPath[0],
+  });
 };
 const msg = (...params) => settingsStore.msg(...params);
 </script>

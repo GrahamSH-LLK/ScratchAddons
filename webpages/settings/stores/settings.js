@@ -7,7 +7,6 @@ import categories from "../data/categories.js";
 import exampleManifest from "../data/example-manifest.js";
 import fuseOptions from "../data/fuse-options.js";
 import tags from "../data/tags.js";
-import bus from "../lib/eventbus.js";
 
 let applyGlobalTheme = null;
 
@@ -39,6 +38,10 @@ export const useSettingsStore = defineStore("settings", {
     grantedOptionalPermissions: [],
     addonListObjs: [],
     fuse: null,
+    closeDropdownsSignal: 0,
+    closeDropdownsExceptId: null,
+    closePickersSignal: 0,
+    closePickersExceptId: null,
     searchMsg: "",
     sidebarUrls: {},
   }),
@@ -390,12 +393,112 @@ export const useSettingsStore = defineStore("settings", {
         }
       }, wait);
     },
-    closePickers(e, leaveOpen, { callCloseDropdowns = true } = {}) {
-      bus.$emit("close-pickers", leaveOpen);
+    cloneSettingValue(value) {
+      return JSON.parse(JSON.stringify(value));
+    },
+    getAddonSettings(addon) {
+      return this.addonSettings[addon._addonId];
+    },
+    getSettingPathParent(addon, settingPath) {
+      let target = this.getAddonSettings(addon);
+      for (const segment of settingPath.slice(0, -1)) {
+        target = target[segment];
+      }
+      return target;
+    },
+    setAddonSetting(addon, settingPath, value, { persist = false, wait = 0, settingId = settingPath[0] } = {}) {
+      const parent = this.getSettingPathParent(addon, settingPath);
+      parent[settingPath.at(-1)] = value;
+      if (persist) this.updateSettings(addon, { wait, settingId });
+    },
+    resetAddonSetting(addon, setting, settingPath = [setting.id]) {
+      this.setAddonSetting(addon, settingPath, this.cloneSettingValue(setting.default), {
+        persist: true,
+        settingId: settingPath[0],
+      });
+    },
+    loadAddonPreset(addon, preset) {
+      const addonSettings = this.getAddonSettings(addon);
+      for (const property of Object.keys(preset.values)) {
+        addonSettings[property] = this.cloneSettingValue(preset.values[property]);
+      }
+      this.updateSettings(addon);
+      console.log(`Loaded preset ${preset.id} for ${addon._addonId}`);
+    },
+    loadAddonDefaults(addon) {
+      const addonSettings = this.getAddonSettings(addon);
+      for (const property of addon.settings) {
+        addonSettings[property.id] = this.cloneSettingValue(property.default);
+      }
+      this.updateSettings(addon);
+      console.log(`Loaded default values for ${addon._addonId}`);
+    },
+    moveTableRow(addon, setting, oldIndex, newIndex) {
+      const list = this.getAddonSettings(addon)[setting.id];
+      list.splice(newIndex, 0, list.splice(oldIndex, 1)[0]);
+      this.updateSettings(addon);
+    },
+    deleteTableRow(addon, setting, index) {
+      this.getAddonSettings(addon)[setting.id].splice(index, 1);
+      this.updateSettings(addon);
+    },
+    addTableRow(addon, setting, items = {}) {
+      const row = Object.assign(
+        {},
+        setting.row.reduce((acc, cur) => {
+          acc[cur.id] = this.cloneSettingValue(cur.default);
+          return acc;
+        }, {}),
+        this.cloneSettingValue(items)
+      );
+      this.getAddonSettings(addon)[setting.id].push(row);
+      this.updateSettings(addon);
+    },
+    setAddonEnabled(addon, newState) {
+      addon._wasEverEnabled = addon._enabled || newState;
+      addon._enabled = newState;
+      chrome.runtime.sendMessage({ changeEnabledState: { addonId: addon._addonId, newState } });
+    },
+    async setAddonEnabledWithPrompt(addon, newState, { isIframe = false } = {}) {
+      if (addon._enabled === newState) return { changed: false, newState };
+      const requiredPermissions = (addon.permissions || []).filter((value) =>
+        this.browserLevelPermissions.includes(value)
+      );
+
+      if (newState && addon.tags.includes("danger")) {
+        const confirmation = confirm(chrome.i18n.getMessage("dangerWarning", [addon.name]));
+        if (!confirmation) return { changed: false, prevented: true };
+      }
+
+      if (newState && requiredPermissions.length) {
+        const hasPermissions = requiredPermissions.every((p) => this.grantedOptionalPermissions.includes(p));
+        if (!hasPermissions) {
+          if (isIframe) {
+            this.addonToEnable = addon;
+            document.querySelector(".popup").style.animation = "dropDown 0.35s 1";
+            this.showPopupModal = true;
+            return { changed: false, prevented: true };
+          }
+
+          const granted = await new Promise((resolve) => {
+            chrome.permissions.request({ permissions: requiredPermissions }, resolve);
+          });
+          if (!granted) return { changed: false, prevented: true };
+          console.log("Permissions granted!");
+        }
+      }
+
+      this.setAddonEnabled(addon, newState);
+      return { changed: true, newState };
+    },
+    closePickers(e, exceptId, { callCloseDropdowns = true } = {}) {
+      this.closePickersSignal++;
+      this.closePickersExceptId = exceptId ?? null;
       if (callCloseDropdowns) this.closeDropdowns();
     },
-    closeDropdowns(e, leaveOpen) {
-      bus.$emit("close-dropdowns", leaveOpen);
+    closeDropdowns(e, exceptId) {
+      this.closeDropdownsSignal++;
+      this.closeDropdownsExceptId = exceptId ?? null;
     },
     openRelatedAddons(addonManifest, log = true) {
       this.relatedToAddonName = addonManifest.name;

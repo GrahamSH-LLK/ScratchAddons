@@ -29,7 +29,7 @@
             <li role="menuitem" tabindex="0" @click="importPreset">{{ msg("import") }}</li>
           </dropdown>
         </div>
-        <input type="checkbox" class="switch" v-model="addon._enabled" @click="toggleAddonRequest" />
+        <input type="checkbox" class="switch" :checked="addon._enabled" @change="toggleAddonRequest" />
       </div>
     </div>
     <div class="addon-settings" v-if="everExpanded" v-show="expanded">
@@ -57,7 +57,7 @@
         <span>{{ msg("creditTo") }}</span>
         <span v-for="credit of addon.credits">
           <span v-if="credit.link">
-            <a href="{{ credit.link }}" rel="noreferrer noopener" target="_blank">{{ credit.name }}</a>
+            <a :href="credit.link" rel="noreferrer noopener" target="_blank">{{ credit.name }}</a>
           </span>
           <span v-else="credit.link">{{ credit.name }}</span>
           <span v-if="credit.note">({{ credit.note }})</span>
@@ -468,7 +468,6 @@
 
 <script setup>
 import downloadBlob from "../../../libraries/common/cs/download-blob.js";
-import bus from "../lib/eventbus.js";
 import { computed, onMounted, ref, watch } from "vue";
 import { useSettingsStore } from "../stores/settings.js";
 
@@ -529,11 +528,7 @@ const showUpdateNotice = computed(() => {
 
 const loadPreset = (preset) => {
   if (window.confirm(chrome.i18n.getMessage("confirmPreset"))) {
-    for (const property of Object.keys(preset.values)) {
-      addonSettings.value[property] = preset.values[property];
-    }
-    settingsStore.updateSettings(props.addon);
-    console.log(`Loaded preset ${preset.id} for ${props.addon._addonId}`);
+    settingsStore.loadAddonPreset(props.addon, preset);
   }
 };
 const importPreset = () => {
@@ -596,64 +591,26 @@ const exportPreset = () => {
 };
 const loadDefaults = () => {
   if (window.confirm(chrome.i18n.getMessage("confirmReset"))) {
-    for (const property of props.addon.settings) {
-      // Clone necessary for tables
-      addonSettings.value[property.id] = JSON.parse(JSON.stringify(property.default));
-    }
-    settingsStore.updateSettings(props.addon);
-    console.log(`Loaded default values for ${props.addon._addonId}`);
+    settingsStore.loadAddonDefaults(props.addon);
   }
 };
-const toggleAddonRequest = (event) => {
-  const toggle = () => {
-    const newState = !props.addon._enabled;
-    props.addon._wasEverEnabled = props.addon._enabled || newState;
-    props.addon._enabled = newState;
-    // Do not extend when enabling in popup mode, unless addon has warnings
-    // Do not collapse when disabling in related addons view
-    expanded.value = settingsStore.relatedAddonsOpen
-      ? expanded.value
-      : isIframe && !expanded.value && (props.addon.info || []).every((item) => item.type !== "warning")
-        ? false
-        : event.shiftKey
-          ? false // Prevent expanding when shift-clicked (#1484)
-          : newState;
-    chrome.runtime.sendMessage({ changeEnabledState: { addonId: props.addon._addonId, newState } });
-    bus.$emit(`toggle-addon-request-${props.addon.id}`, newState);
-  };
-
-  const requiredPermissions = (props.addon.permissions || []).filter((value) =>
-    settingsStore.browserLevelPermissions.includes(value)
-  );
-  if (!props.addon._enabled && props.addon.tags.includes("danger")) {
-    const confirmation = confirm(chrome.i18n.getMessage("dangerWarning", [props.addon.name]));
-    if (!confirmation) {
-      event.preventDefault();
-      return;
-    }
+const toggleAddonRequest = async (event) => {
+  const newState = event.target.checked;
+  const result = await settingsStore.setAddonEnabledWithPrompt(props.addon, newState, { isIframe });
+  if (!result.changed) {
+    event.target.checked = props.addon._enabled;
+    return;
   }
-  if (!props.addon._enabled && requiredPermissions.length) {
-    const result = requiredPermissions.every((p) => settingsStore.grantedOptionalPermissions.includes(p));
-    if (result === false) {
-      event.preventDefault();
-      if (isIframe) {
-        settingsStore.addonToEnable = props.addon;
-        document.querySelector(".popup").style.animation = "dropDown 0.35s 1";
-        settingsStore.showPopupModal = true;
-      } else
-        chrome.permissions.request(
-          {
-            permissions: requiredPermissions,
-          },
-          (granted) => {
-            if (granted) {
-              console.log("Permissions granted!");
-              toggle();
-            }
-          }
-        );
-    } else toggle();
-  } else toggle();
+
+  // Do not extend when enabling in popup mode, unless addon has warnings
+  // Do not collapse when disabling in related addons view
+  expanded.value = settingsStore.relatedAddonsOpen
+    ? expanded.value
+    : isIframe && !expanded.value && (props.addon.info || []).every((item) => item.type !== "warning")
+      ? false
+      : event.shiftKey
+        ? false // Prevent expanding when shift-clicked (#1484)
+        : result.newState;
 };
 const highlightSetting = (id) => {
   highlightedSettingId.value = id;
