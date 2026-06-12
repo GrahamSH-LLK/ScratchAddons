@@ -42,15 +42,16 @@
 </style>
 
 <script setup>
-import { computed, getCurrentInstance } from "vue";
+import { computed } from "vue";
+import { useSettingsStore } from "../stores/settings.js";
 
 const props = defineProps(["group", "shownCount", "marginAbove"]);
 
-const root = getCurrentInstance().proxy.$root;
-const shouldShow = computed(() => root.searchInput === "" && props.shownCount > 0);
-const manifestsById = computed(() => root.manifestsById);
+const settingsStore = useSettingsStore();
+const shouldShow = computed(() => settingsStore.searchInput === "" && props.shownCount > 0);
+const manifestsById = computed(() => settingsStore.manifestsById);
 const toggle = () => {
   props.group.expanded = !props.group.expanded;
 };
-const msg = (...params) => root.msg(...params);
+const msg = (...params) => settingsStore.msg(...params);
 </script>

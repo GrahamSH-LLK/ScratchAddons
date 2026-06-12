@@ -3,7 +3,7 @@
     <button
       class="category"
       :class="{
-        sel: category.id === selectedCategory && !this.$root.relatedAddonsOpen,
+        sel: category.id === selectedCategory && !settingsStore.relatedAddonsOpen,
         hasParent: category.parent,
       }"
       v-if="!category.hidden"
@@ -104,15 +104,16 @@ button.category {
 </style>
 
 <script setup>
-import { computed, getCurrentInstance, ref } from "vue";
+import { computed, ref } from "vue";
+import { useSettingsStore } from "../stores/settings.js";
 
 const props = defineProps(["category"]);
 
-const root = getCurrentInstance().proxy.$root;
+const settingsStore = useSettingsStore();
 const lastClick = ref(0);
-const selectedCategory = computed(() => root.selectedCategory);
+const selectedCategory = computed(() => settingsStore.selectedCategory);
 const shouldShow = computed(() => {
-  const categoriesWithParent = root.categories
+  const categoriesWithParent = settingsStore.categories
     .filter((category) => category.parent === props.category.parent)
     .map((category) => category.id);
   return !props.category.parent || [props.category.parent, ...categoriesWithParent].includes(selectedCategory.value);
@@ -120,12 +121,12 @@ const shouldShow = computed(() => {
 const onClick = (event) => {
   event.stopPropagation();
   if (selectedCategory.value === props.category.id && !props.category.parent && Date.now() - lastClick.value > 350) {
-    root.selectedCategory = "all";
+    settingsStore.selectedCategory = "all";
   } else {
-    root.selectedCategory = props.category.id;
+    settingsStore.selectedCategory = props.category.id;
   }
   lastClick.value = Date.now();
-  root.relatedAddonsHistory.length = 0;
-  root.relatedAddonsOpen = false;
+  settingsStore.relatedAddonsHistory.length = 0;
+  settingsStore.relatedAddonsOpen = false;
 };
 </script>

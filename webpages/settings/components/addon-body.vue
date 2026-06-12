@@ -469,7 +469,8 @@
 <script setup>
 import downloadBlob from "../../../libraries/common/cs/download-blob.js";
 import bus from "../lib/eventbus.js";
-import { computed, getCurrentInstance, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
+import { useSettingsStore } from "../stores/settings.js";
 
 import AddonSetting from "./addon-setting.vue";
 import AddonTag from "./addon-tag.vue";
@@ -498,14 +499,14 @@ defineOptions({
 const props = defineProps(["addon", "groupId", "groupExpanded", "visible"]);
 
 const isIframe = window.parent !== window;
-const root = getCurrentInstance().proxy.$root;
+const settingsStore = useSettingsStore();
 const getDefaultExpanded = () => (isIframe ? false : props.groupId === "enabled");
 const expanded = ref(getDefaultExpanded());
 const everExpanded = ref(getDefaultExpanded());
 const hoveredSettingId = ref(null);
 const highlightedSettingId = ref(null);
 
-const shouldShow = computed(() => props.visible && (root.searchInput === "" ? props.groupExpanded : true));
+const shouldShow = computed(() => props.visible && (settingsStore.searchInput === "" ? props.groupExpanded : true));
 const addonIconSrc = computed(() => {
   const map = {
     editor: "puzzle",
@@ -517,11 +518,11 @@ const addonIconSrc = computed(() => {
   };
   return `../../images/icons/${map[props.addon._icon]}.svg`;
 });
-const addonSettings = computed(() => root.addonSettings[props.addon._addonId]);
-const devMode = computed(() => root.devMode);
+const addonSettings = computed(() => settingsStore.addonSettings[props.addon._addonId]);
+const devMode = computed(() => settingsStore.devMode);
 const showUpdateNotice = computed(() => {
   if (!props.addon.latestUpdate || !props.addon.latestUpdate.temporaryNotice) return false;
-  const [extMajor, extMinor, _] = root.version.split(".");
+  const [extMajor, extMinor, _] = chrome.runtime.getManifest().version.split(".");
   const [addonMajor, addonMinor, __] = props.addon.latestUpdate.version.split(".");
   return extMajor === addonMajor && extMinor === addonMinor;
 });
@@ -531,7 +532,7 @@ const loadPreset = (preset) => {
     for (const property of Object.keys(preset.values)) {
       addonSettings.value[property] = preset.values[property];
     }
-    root.updateSettings(props.addon);
+    settingsStore.updateSettings(props.addon);
     console.log(`Loaded preset ${preset.id} for ${props.addon._addonId}`);
   }
 };
@@ -561,7 +562,7 @@ const importPreset = () => {
         }
         if (obj.addonId !== props.addon._addonId) {
           console.warn(`Incorrect addon ID: ${obj.addonId}`);
-          alert(msg("incorrectAddonImport", root.manifestsById[obj.addonId].name));
+          alert(msg("incorrectAddonImport", settingsStore.manifestsById[obj.addonId].name));
           return;
         }
       } catch (e) {
@@ -599,7 +600,7 @@ const loadDefaults = () => {
       // Clone necessary for tables
       addonSettings.value[property.id] = JSON.parse(JSON.stringify(property.default));
     }
-    root.updateSettings(props.addon);
+    settingsStore.updateSettings(props.addon);
     console.log(`Loaded default values for ${props.addon._addonId}`);
   }
 };
@@ -610,7 +611,7 @@ const toggleAddonRequest = (event) => {
     props.addon._enabled = newState;
     // Do not extend when enabling in popup mode, unless addon has warnings
     // Do not collapse when disabling in related addons view
-    expanded.value = root.relatedAddonsOpen
+    expanded.value = settingsStore.relatedAddonsOpen
       ? expanded.value
       : isIframe && !expanded.value && (props.addon.info || []).every((item) => item.type !== "warning")
         ? false
@@ -622,7 +623,7 @@ const toggleAddonRequest = (event) => {
   };
 
   const requiredPermissions = (props.addon.permissions || []).filter((value) =>
-    root.browserLevelPermissions.includes(value)
+    settingsStore.browserLevelPermissions.includes(value)
   );
   if (!props.addon._enabled && props.addon.tags.includes("danger")) {
     const confirmation = confirm(chrome.i18n.getMessage("dangerWarning", [props.addon.name]));
@@ -632,13 +633,13 @@ const toggleAddonRequest = (event) => {
     }
   }
   if (!props.addon._enabled && requiredPermissions.length) {
-    const result = requiredPermissions.every((p) => root.grantedOptionalPermissions.includes(p));
+    const result = requiredPermissions.every((p) => settingsStore.grantedOptionalPermissions.includes(p));
     if (result === false) {
       event.preventDefault();
       if (isIframe) {
-        root.addonToEnable = props.addon;
+        settingsStore.addonToEnable = props.addon;
         document.querySelector(".popup").style.animation = "dropDown 0.35s 1";
-        root.showPopupModal = true;
+        settingsStore.showPopupModal = true;
       } else
         chrome.permissions.request(
           {
@@ -657,11 +658,11 @@ const toggleAddonRequest = (event) => {
 const highlightSetting = (id) => {
   highlightedSettingId.value = id;
 };
-const msg = (...params) => root.msg(...params);
+const msg = (...params) => settingsStore.msg(...params);
 const openRelated = (clickedAddon, event) => {
   event.preventDefault();
-  root.openRelatedAddons(props.addon);
-  root.blinkAddon(clickedAddon._addonId);
+  settingsStore.openRelatedAddons(props.addon);
+  settingsStore.blinkAddon(clickedAddon._addonId);
 };
 
 watch(
@@ -672,7 +673,7 @@ watch(
   }
 );
 watch(
-  () => root.searchInput,
+  () => settingsStore.searchInput,
   (newValue) => {
     if (newValue === "") expanded.value = getDefaultExpanded();
     else expanded.value = false;

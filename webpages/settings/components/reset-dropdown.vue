@@ -31,21 +31,19 @@
 </template>
 
 <script setup>
-import { getCurrentInstance } from "vue";
 import Dropdown from "./dropdown.vue";
+import { useSettingsStore } from "../stores/settings.js";
 
-const props = defineProps(["disabled", "setting", "presets"]);
+const props = defineProps(["addon", "addon-settings", "disabled", "setting", "presets"]);
 
-const instance = getCurrentInstance();
-const parent = instance.proxy.$parent;
-const root = instance.proxy.$root;
+const settingsStore = useSettingsStore();
 const resetToDefault = () => {
-  parent.addonSettings[props.setting.id] = props.setting.default;
-  parent.updateSettings(parent.addon, { settingId: props.setting.id });
+  props.addonSettings[props.setting.id] = props.setting.default;
+  settingsStore.updateSettings(props.addon, { settingId: props.setting.id });
 };
 const resetToPreset = (preset) => {
-  parent.addonSettings[props.setting.id] = preset.values[props.setting.id];
-  parent.updateSettings(parent.addon, { settingId: props.setting.id });
+  props.addonSettings[props.setting.id] = preset.values[props.setting.id];
+  settingsStore.updateSettings(props.addon, { settingId: props.setting.id });
 };
-const msg = (...params) => root.msg(...params);
+const msg = (...params) => settingsStore.msg(...params);
 </script>

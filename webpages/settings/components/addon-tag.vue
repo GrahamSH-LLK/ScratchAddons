@@ -21,17 +21,18 @@
 </template>
 
 <script setup>
-import { computed, getCurrentInstance } from "vue";
+import { computed } from "vue";
 import tags from "../data/tags.js";
+import { useSettingsStore } from "../stores/settings.js";
 
 const props = defineProps(["tag"]);
 
 const isIframe = window.parent !== window;
-const root = getCurrentInstance().proxy.$root;
+const settingsStore = useSettingsStore();
 const tagInfo = computed(() => tags.find((tag) => tag.matchName === props.tag));
 const shouldShow = computed(() => {
   if (isIframe) return tagInfo.value && tagInfo.value.iframeAlwaysShow;
-  return tagInfo.value && (!tagInfo.value.addonTabShow || tagInfo.value.addonTabShow[root.selectedCategory]);
+  return tagInfo.value && (!tagInfo.value.addonTabShow || tagInfo.value.addonTabShow[settingsStore.selectedCategory]);
 });
 const tagName = computed(() => chrome.i18n.getMessage(tagInfo.value.name));
 const tagTooltip = computed(() => chrome.i18n.getMessage(tagInfo.value.tooltipText));

@@ -66,14 +66,15 @@
 
 <script setup>
 import { getCurrentInstance } from "vue";
+import { useSettingsStore } from "../stores/settings.js";
 
 defineProps(["title"]);
 
 const instance = getCurrentInstance();
-const root = instance.proxy.$root;
+const settingsStore = useSettingsStore();
 const openModal = () => instance.proxy.$el.showModal();
 const closeModal = () => instance.proxy.$el.close();
-const msg = (...params) => root.msg(...params);
+const msg = (...params) => settingsStore.msg(...params);
 
 defineExpose({ closeModal, openModal });
 </script>

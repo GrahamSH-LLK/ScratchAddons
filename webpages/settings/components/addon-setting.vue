@@ -130,13 +130,20 @@
           :value="addonSettings[setting.id] || setting.default"
           :setting="setting"
           :addon="addon"
+          :addon-settings="addonSettings"
           :no_alpha="!setting.allowTransparency"
           :disabled="!addon._enabled"
           v-click-outside="closePickers"
         ></picker
       ></template>
       <template v-if="showResetDropdown"
-        ><reset-dropdown :setting="setting" :disabled="!addon._enabled" :presets="addon.presets"></reset-dropdown
+        ><reset-dropdown
+          :addon="addon"
+          :addon-settings="addonSettings"
+          :setting="setting"
+          :disabled="!addon._enabled"
+          :presets="addon.presets"
+        ></reset-dropdown
       ></template>
       <template v-if="!tableChild && !showResetDropdown"
         ><button
@@ -335,7 +342,8 @@
 <script setup>
 import Sortable from "sortablejs";
 import bus from "../lib/eventbus";
-import { computed, getCurrentInstance } from "vue";
+import { computed } from "vue";
+import { useSettingsStore } from "../stores/settings.js";
 
 import AddonTag from "./addon-tag.vue";
 import Dropdown from "./dropdown.vue";
@@ -344,9 +352,7 @@ import ResetDropdown from "./reset-dropdown.vue";
 
 const props = defineProps(["addon", "groupId", "setting", "settingPath", "addon-settings"]);
 
-const instance = getCurrentInstance();
-const root = instance.proxy.$root;
-const parent = instance.proxy.$parent;
+const settingsStore = useSettingsStore();
 
 const noResetDropdown = computed(() => ["table", "boolean", "select"].includes(props.setting.type));
 const tableChild = computed(() => props.settingPath.length > 1);
@@ -358,7 +364,7 @@ const show = computed(() => {
     const arr = Array.isArray(props.setting.if.addonEnabled)
       ? props.setting.if.addonEnabled
       : [props.setting.if.addonEnabled];
-    if (arr.some((addon) => root.manifestsById[addon]._enabled === true)) return true;
+    if (arr.some((addon) => settingsStore.manifestsById[addon]._enabled === true)) return true;
   }
 
   if (props.setting.if.settings) {
@@ -368,7 +374,8 @@ const show = computed(() => {
         : [props.setting.if.settings[settingName]];
       return arr.some(
         (possibleValue) =>
-          props.addonSettings[settingName] === possibleValue || parent?.addonSettings?.[settingName] === possibleValue
+          props.addonSettings[settingName] === possibleValue ||
+          settingsStore.addonSettings[props.addon._addonId]?.[settingName] === possibleValue
       );
     });
     if (anyMatches === true) return true;
@@ -391,7 +398,7 @@ const showResetDropdown = computed(
 const isNewOption = computed(() => {
   if (!props.addon.latestUpdate) return false;
 
-  const [extMajor, extMinor, _] = root.version.split(".");
+  const [extMajor, extMinor, _] = chrome.runtime.getManifest().version.split(".");
   const [addonMajor, addonMinor, __] = props.addon.latestUpdate.version.split(".");
   if (!(extMajor === addonMajor && extMinor === addonMinor)) return false;
 
@@ -401,7 +408,7 @@ const isNewOption = computed(() => {
 });
 const updateSettings = (...params) => {
   if (!params[0]) params[0] = props.addon;
-  root.updateSettings(...params);
+  settingsStore.updateSettings(...params);
 };
 const updateTable = (event) => {
   let list = props.addonSettings[props.setting.id];
@@ -447,12 +454,12 @@ const addTableRow = (items = {}) => {
   props.addonSettings[props.setting.id].push(settings);
   updateSettings();
 };
-const msg = (...params) => root.msg(...params);
+const msg = (...params) => settingsStore.msg(...params);
 const updateOption = (newValue) => {
   props.addonSettings[props.setting.id] = newValue;
   updateSettings();
 };
-const closePickers = (...params) => root.closePickers(...params);
+const closePickers = (...params) => settingsStore.closePickers(...params);
 
 const vSortable = {
   mounted: (el, binding) => {

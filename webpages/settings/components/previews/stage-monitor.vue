@@ -162,11 +162,12 @@
 <script setup>
 import cssVariables from "../../../../libraries/common/vue-css-variables.js";
 import { textColor } from "../../../../libraries/common/cs/text-color.esm.js";
-import { computed, getCurrentInstance } from "vue";
+import { computed } from "vue";
+import { useSettingsStore } from "../../stores/settings.js";
 
 const props = defineProps(["settings", "hoveredSettingId"]);
 
-const root = getCurrentInstance().proxy.$root;
+const settingsStore = useSettingsStore();
 const colors = computed(() => {
   const variableValue = props.settings.customValueColor ? props.settings.monitorValueBg : "#ff8c1a";
   const listValue = props.settings.customValueColor ? props.settings.monitorValueBg : "#fc662c";
@@ -179,5 +180,5 @@ const colors = computed(() => {
     listValueText: textColor(listValue),
   };
 });
-const msg = (...params) => root.msg(...params);
+const msg = (...params) => settingsStore.msg(...params);
 </script>

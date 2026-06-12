@@ -17,12 +17,12 @@
 import { Chrome } from "@lk77/vue3-color";
 import { getCurrentInstance, onMounted, ref, watch } from "vue";
 import bus from "../lib/eventbus";
+import { useSettingsStore } from "../stores/settings.js";
 
-const props = defineProps(["value", "addon", "setting", "no_alpha", "disabled"]);
+const props = defineProps(["value", "addon", "setting", "no_alpha", "disabled", "addon-settings"]);
 
 const instance = getCurrentInstance();
-const root = instance.proxy.$root;
-const parent = instance.proxy.$parent;
+const settingsStore = useSettingsStore();
 const load = ref(false);
 const isOpen = ref(false);
 const color = ref(props.value);
@@ -45,10 +45,10 @@ onMounted(() => {
 function open() {
   if (!load.value) return;
   isOpen.value = true;
-  root.closePickers({ isTrusted: true }, instance.proxy, {
+  settingsStore.closePickers({ isTrusted: true }, instance.proxy, {
     callCloseDropdowns: false,
   });
-  root.closeDropdowns({ isTrusted: true });
+  settingsStore.closeDropdowns({ isTrusted: true });
 }
 
 function close(callBus = true) {
@@ -61,8 +61,8 @@ function onColorChange(newColor) {
   color.value = hex;
 
   if (props.value !== color.value) {
-    parent.addonSettings[props.setting.id] = color.value;
-    parent.updateSettings(props.addon, {
+    props.addonSettings[props.setting.id] = color.value;
+    settingsStore.updateSettings(props.addon, {
       wait: 250,
       settingId: props.setting.id,
     });

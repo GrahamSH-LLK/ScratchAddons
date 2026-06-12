@@ -72,11 +72,12 @@
 <script setup>
 import bus from "../lib/eventbus";
 import { computed, getCurrentInstance, onMounted, ref } from "vue";
+import { useSettingsStore } from "../stores/settings.js";
 
 defineProps(["buttonClass", "buttonTitle", "disabled", "alignStart"]);
 
 const instance = getCurrentInstance();
-const root = instance.proxy.$root;
+const settingsStore = useSettingsStore();
 const isOpen = ref(false);
 const shiftAmountsByKey = {
   ArrowUp: -1,
@@ -89,10 +90,10 @@ const shiftAmountsByKey = {
 const items = computed(() => Array.from(instance.proxy.$refs.list.children));
 const toggle = () => {
   isOpen.value = !isOpen.value;
-  root.closePickers({ isTrusted: true }, null, {
+  settingsStore.closePickers({ isTrusted: true }, null, {
     callCloseDropdowns: false,
   });
-  root.closeDropdowns({ isTrusted: true }, instance.proxy); // close other dropdowns
+  settingsStore.closeDropdowns({ isTrusted: true }, instance.proxy); // close other dropdowns
   if (isOpen.value) {
     instance.proxy.$nextTick(() => {
       instance.proxy.$refs.list.firstElementChild.focus();
@@ -101,7 +102,7 @@ const toggle = () => {
 };
 const listClick = (e) => {
   if (e.target.closest("li")) {
-    root.closeDropdowns();
+    settingsStore.closeDropdowns();
   }
 };
 const handleKeys = (e) => {
@@ -109,7 +110,7 @@ const handleKeys = (e) => {
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.key === "Tab") {
     instance.proxy.$refs.button.focus(); // then let the default behavior of tab take over
-    root.closeDropdowns();
+    settingsStore.closeDropdowns();
   } else if (document.activeElement.tagName === "LI" && e.key === "Enter") {
     document.activeElement.click();
   } else {
@@ -124,7 +125,7 @@ const handleKeys = (e) => {
     targetElement.focus();
   }
 };
-const closeDropdowns = (...params) => root.closeDropdowns(...params);
+const closeDropdowns = (...params) => settingsStore.closeDropdowns(...params);
 
 onMounted(() => {
   bus.$on("close-dropdowns", (except) => {
