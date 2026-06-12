@@ -245,7 +245,6 @@
 <script setup>
 import downloadBlob from "../../libraries/common/cs/download-blob.js";
 import getDirection from "../public/rtl-list.js";
-import globalTheme from "../../libraries/common/global-theme.js";
 import { deserializeSettings, serializeSettings } from "./settings-utils.js";
 import { isFirefox } from "../../libraries/common/cs/detect-browser.js";
 import { storeToRefs } from "pinia";
@@ -267,8 +266,6 @@ if (window.parent !== window) {
   isIframe = true;
 }
 
-const { theme: initialTheme, setGlobalTheme } = await globalTheme();
-
 // REMINDER: update similar code at /background/imports/util.js
 const browserLevelPermissions = ["notifications"];
 if (isFirefox()) {
@@ -281,7 +278,6 @@ if (isFirefox()) {
 const settingsStore = useSettingsStore();
 settingsStore.initialize({
   browserLevelPermissions,
-  initialTheme,
   isIframe,
   searchMsg: msg("search"),
   sidebarUrls: (() => {
@@ -377,8 +373,7 @@ function clearAndFocusSearch() {
   document.querySelector("#searchBox").focus();
 }
 function setTheme(mode) {
-  setGlobalTheme(mode);
-  theme.value = mode;
+  settingsStore.setTheme(mode);
 }
 function closePickers(e, leaveOpen, { callCloseDropdowns = true } = {}) {
   settingsStore.closePickers(e, leaveOpen, { callCloseDropdowns });
@@ -500,6 +495,8 @@ watch(forceEnglishSetting, (newValue, oldValue) => {
 const moreSettings = ref(null);
 
 onMounted(() => {
+  settingsStore.loadGlobalTheme();
+
   // Autofocus search bar in iframe mode for both browsers
   // autofocus attribute only works in Chrome for us, so
   // we also manually focus on Firefox, even in fullscreen

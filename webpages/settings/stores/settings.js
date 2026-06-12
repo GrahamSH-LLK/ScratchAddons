@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 
+import globalTheme from "../../../libraries/common/global-theme.js";
 import Fuse from "../../../libraries/thirdparty/cs/fuse.esm.min.js";
 import addonGroupsData from "../data/addon-groups.js";
 import categories from "../data/categories.js";
@@ -7,6 +8,8 @@ import exampleManifest from "../data/example-manifest.js";
 import fuseOptions from "../data/fuse-options.js";
 import tags from "../data/tags.js";
 import bus from "../lib/eventbus.js";
+
+let applyGlobalTheme = null;
 
 export const useSettingsStore = defineStore("settings", {
   state: () => ({
@@ -91,14 +94,22 @@ export const useSettingsStore = defineStore("settings", {
     },
   },
   actions: {
-    initialize({ browserLevelPermissions, initialTheme, isIframe, searchMsg, sidebarUrls }) {
+    initialize({ browserLevelPermissions, isIframe, searchMsg, sidebarUrls }) {
       this.browserLevelPermissions = browserLevelPermissions;
-      this.theme = initialTheme;
       this.searchMsg = searchMsg;
       this.sidebarUrls = sidebarUrls;
       this.addonGroups = addonGroupsData
         .filter((group) => (isIframe ? group.iframeShow : group.fullscreenShow))
         .map((group) => ({ ...group, addonIds: [...group.addonIds] }));
+    },
+    async loadGlobalTheme() {
+      const { theme, setGlobalTheme } = await globalTheme();
+      this.theme = theme;
+      applyGlobalTheme = setGlobalTheme;
+    },
+    setTheme(mode) {
+      applyGlobalTheme?.(mode);
+      this.theme = mode;
     },
     loadPlaceholderAddons() {
       const exampleAddonListItem = {
